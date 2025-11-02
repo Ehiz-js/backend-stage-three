@@ -92,3 +92,5 @@ export const scorers = {
 	completenessScorer,
 	answerJudgementScorer,
 };
+
+export default scorers;
