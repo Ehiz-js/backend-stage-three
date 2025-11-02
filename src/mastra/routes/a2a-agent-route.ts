@@ -14,11 +14,7 @@ interface A2ARequestBody {
 	};
 }
 
-/**
- * A2A-compatible route for OlympusAgent
- * Example endpoint: POST http://localhost:4112/a2a/olympusAgent
- */
-export const a2aAgentRoute = registerApiRoute("/a2a/:agentId", {
+export const a2aAgentRoute = registerApiRoute("/a2a/agent/:agentId", {
 	method: "POST",
 	handler: async (c) => {
 		try {
