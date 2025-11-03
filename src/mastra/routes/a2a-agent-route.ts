@@ -2,8 +2,8 @@ import { registerApiRoute } from "@mastra/core/server";
 import { randomUUID } from "crypto";
 
 interface A2ARequestBody {
-	jsonrpc: string;
-	id: string;
+	jsonrpc?: string;
+	id?: string;
 	method?: string;
 	params?: {
 		message?: any;
@@ -18,13 +18,53 @@ export const a2aAgentRoute = registerApiRoute("/a2a/agent/:agentId", {
 	method: "POST",
 	handler: async (c) => {
 		try {
-			const mastra = c.get("mastra") as any; // Mastra context object
+			const mastra = c.get("mastra") as any;
 			const agentId = c.req.param("agentId") as string;
 
-			// Parse JSON-RPC 2.0 body
-			const body = (await c.req.json()) as A2ARequestBody;
+			let body: A2ARequestBody = {};
+			try {
+				body = (await c.req.json()) as A2ARequestBody;
+			} catch {
+				// If no JSON or invalid body, default to empty
+				body = {};
+			}
+
 			const { jsonrpc, id: requestId, params } = body || {};
 
+			// If body is empty, still return 200 with minimal A2A response
+			if (!jsonrpc && !requestId && !params) {
+				return c.json(
+					{
+						jsonrpc: "2.0",
+						id: null,
+						result: {
+							id: randomUUID(),
+							contextId: randomUUID(),
+							kind: "task",
+							status: {
+								state: "completed",
+								timestamp: new Date().toISOString(),
+								message: {
+									kind: "message",
+									role: "agent",
+									messageId: randomUUID(),
+									parts: [
+										{
+											kind: "text",
+											text: "No input received — but the gods are listening.",
+										},
+									],
+								},
+							},
+							artifacts: [],
+							history: [],
+						},
+					},
+					200
+				);
+			}
+
+			// Validate JSON-RPC structure
 			if (jsonrpc !== "2.0" || !requestId) {
 				return c.json(
 					{
@@ -40,6 +80,7 @@ export const a2aAgentRoute = registerApiRoute("/a2a/agent/:agentId", {
 				);
 			}
 
+			// Check for valid agent
 			const agent = mastra?.getAgent?.(agentId);
 			if (!agent) {
 				return c.json(
@@ -63,7 +104,6 @@ export const a2aAgentRoute = registerApiRoute("/a2a/agent/:agentId", {
 					? messages
 					: [];
 
-			// Convert A2A message format to Mastra agent format
 			const mastraMessages = messagesList.map((msg: any) => ({
 				role: msg.role,
 				content:
@@ -80,7 +120,6 @@ export const a2aAgentRoute = registerApiRoute("/a2a/agent/:agentId", {
 			const textResponse: string =
 				(result && result.text) || "No response generated.";
 
-			// Artifacts for A2A response
 			const artifacts = [
 				{
 					artifactId: randomUUID(),
@@ -100,7 +139,6 @@ export const a2aAgentRoute = registerApiRoute("/a2a/agent/:agentId", {
 				});
 			}
 
-			// Build conversation history
 			const history = [
 				...messagesList.map((msg: any) => ({
 					kind: "message",
@@ -118,7 +156,6 @@ export const a2aAgentRoute = registerApiRoute("/a2a/agent/:agentId", {
 				},
 			];
 
-			// Return JSON-RPC 2.0 A2A-compatible response
 			return c.json({
 				jsonrpc: "2.0",
 				id: requestId,

@@ -3,13 +3,12 @@ import { PinoLogger } from "@mastra/loggers";
 import { LibSQLStore } from "@mastra/libsql";
 import { a2aAgentRoute } from "./routes/a2a-agent-route";
 import { olympusAgent } from "./agents/olympus-agent";
+import { olympusWorkflow } from "./workflows/olympus-workflow"; // ✅ add this
 
 export const mastra = new Mastra({
-	workflows: {},
+	workflows: { olympusWorkflow }, // ✅ register it here
 	agents: { olympusAgent },
-
 	storage: new LibSQLStore({
-		// stores observability, scores, ... into memory storage, if it needs to persist, change to file:../mastra.db
 		url: ":memory:",
 	}),
 	logger: new PinoLogger({
@@ -17,11 +16,9 @@ export const mastra = new Mastra({
 		level: "info",
 	}),
 	telemetry: {
-		// Telemetry is deprecated and will be removed in the Nov 4th release
 		enabled: false,
 	},
 	observability: {
-		// Enables DefaultExporter and CloudExporter for AI tracing
 		default: { enabled: true },
 	},
 	server: {
